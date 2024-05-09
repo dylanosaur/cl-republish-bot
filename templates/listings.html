@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity - Logged Results</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+        th {
+            background-color: #b3b3b3;
+            border-radius: 6px;
+        }
+        .actionButton {
+            margin: 10px;
+        }
+        #filterBox {
+            margin: 10px 10px;
+        }
+        body {
+            background-color: #dbdbdb;
+        }
+    </style>
+</head>
+<body>
+
+    <div>
+        <h2>Actions</h2>
+        <!-- <a href="/sync">Scrape first page</a> <br> -->
+        <!-- <a href="/fullsync">Scrape all pages</a> <br> -->
+        <div>
+            <button id="removeFiltersButton" class="actionButton">
+                Clear Filters
+            </button>
+       
+            <button id="exportButton" class="actionButton">
+                Export all Data
+            </button>
+        
+            <button id="syncFromCraigslistButton" class="actionButton">
+                Sync from Craigslist
+            </button>
+       
+            <button id="submitButton" class="actionButton">
+                Republish selected listings
+            </button>
+
+            <button id="clearBatch" class="actionButton">
+                Clear Republish Batch
+            </button>
+        </div>
+
+        <div id="filterBox">
+            {% if applied_filters %}
+                <div>Applied filters: {{applied_filters}}</div>
+            {% else %}
+                <div>No filters applied</div>
+            {% endif %}
+        </div>
+
+
+    </div>
+
+    <div>
+        <h3>Republish Batch</h3>
+
+        <table>
+            <tr>
+
+                <th>Status</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>ID</th>
+                <th>Remove From Batch</th>
+            </tr>
+            {% for item in batch_republish_listings %}
+            <tr>
+                <td>{{ item[0].text }}</td>
+                <td>
+                    {% if item[2].ref %}
+                        <a href="{{ item[2].ref }}">{{item[2].text}}</a>
+                    {% else %}
+                        {{item[2].text}}
+                    {% endif %}
+                </td>
+                <td>{{ item[3].text }}</td>
+                <td>{{ item[7].text }}</td>
+                <td><button class="removeFromBatchButton" value="{{item[7].text}}">Remove</button></td>
+            </tr>
+            {% endfor %}
+        </table>
+
+    </div>
+    <h1>Listings</h1>
+
+
+    <table>
+        <tr>
+
+            <th>Index</th>
+            <th>Status</th>
+            <!-- <th>Buttons</th> -->
+            <th>Title</th>
+            <th>Category <br>
+                <form action="/" method="post" >
+                    <label for="cars">Filter:</label>
+                    <select id="category" name="category">
+                        {% for category in category_options %}
+                            <option value={{category}}>{{category}}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit">update</button>
+                </form>
+            </th>
+            <th>Posted Date <br>
+            <form action="/" method="post" >
+                <input type="date" id="datePickerStart" name="datePickerStart"> <span>start</span> <br>
+                <input type="date" id="datePickerEnd" name="datePickerEnd"> <span>end</span> <br>
+                <button type="submit">update</button>
+            </form>
+
+            </th>
+            <th>Expiry <br>
+            </th>
+            <th>ID</th>
+
+            <th>Backup link</th>
+            <th>Mark for republish</th>
+
+        </tr>
+        {% for item in listings %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ item[0].text }}</td>
+            <!-- <td>{{ item[1] }}</td> -->
+            <td>
+                {% if item[2].ref %}
+                    <a href="{{ item[2].ref }}">{{item[2].text}}</a>
+                {% else %}
+                    {{item[2].text}}
+                {% endif %}
+            </td>
+            <td>{{ item[3].text }}</td>
+            <td>{{ item[4].text }}</td>
+            <td>{{ item[6].days}} - {{ item[6].text }}</td>
+            <td>{{ item[7].text }}
+                <a href="{{'/republish?listingId='+item[7].text}}">republish</a>
+            </td>
+
+            <td>
+                <a href="{{item[1].postref}}">Manage</a>
+            </td>
+            <td>
+                <input type="checkbox" id="{{item[7].text}}" name="checkbox" value="checked">
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <script>
+        // Function to send a POST request with the checkbox ID
+        async function sendCheckboxId(id) {
+            try {
+                const response = await fetch('/update_session', {
+                    method: 'POST',
+                    credentials: 'include', // Include cookies if your session relies on them
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id: id })
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to update session');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+            document.location.href = '/'
+        }
+
+        // Function to send a POST request to remove item from batch
+        async function removeFromBatch(itemId) {
+            try {
+                const response = await fetch('/remove_from_batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id: itemId })
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to remove item from batch');
+                }
+                // Handle success as needed
+            } catch (error) {
+                console.error('Error:', error);
+            }
+            document.location.href = '/'
+
+        }
+
+        // Add event listeners to all "Remove" buttons
+        window.onload = function () {
+            const removeButtons = document.querySelectorAll('.removeFromBatchButton');
+            removeButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    removeFromBatch(this.value); // Send the value (item ID) of the clicked button
+                });
+            });
+
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(function (checkbox) {
+                checkbox.addEventListener('change', function () {
+                    if (this.checked) {
+                        sendCheckboxId(this.id); // Send the ID of the checked checkbox
+                    }
+                });
+            });
+
+            const clearRepublishBatchButton = document.getElementById('clearBatch')
+
+            // Add a click event listener
+            clearRepublishBatchButton.addEventListener('click', function() {
+                // Perform a GET request to clear the session
+                fetch('/clear_batch', {
+                    method: 'GET',
+                    credentials: 'include' // Include cookies if your session relies on them
+                })
+                .then(response => {
+                    // Check if the response is successful
+                    if (response.ok) {
+                        // Redirect the user to "/"
+                        window.location.href = "/";
+                    } else {
+                        // Handle the error, maybe display a message to the user
+                        console.error('Failed to clear session');
+                    }
+                })
+                .catch(error => {
+                    // Handle any network errors
+                    console.error('Network error:', error);
+                });
+            });
+
+            document.getElementById('submitButton').addEventListener('click', function() {
+                // Redirect to the Flask page and pass the selected ids as a query parameter
+                window.location.href = '/confirm';
+            });
+
+
+            // Get the button element
+            const clearFiltersButton = document.getElementById('removeFiltersButton');
+
+            // Add a click event listener
+            clearFiltersButton.addEventListener('click', function() {
+                // Perform a GET request to clear the session
+                fetch('/clear_filters', {
+                    method: 'GET',
+                    credentials: 'include' // Include cookies if your session relies on them
+                })
+                .then(response => {
+                    // Check if the response is successful
+                    if (response.ok) {
+                        // Redirect the user to "/"
+                        window.location.href = "/";
+                    } else {
+                        // Handle the error, maybe display a message to the user
+                        console.error('Failed to clear session');
+                    }
+                })
+                .catch(error => {
+                    // Handle any network errors
+                    console.error('Network error:', error);
+                });
+            });
+
+            // Function to trigger download when export button is clicked
+            document.getElementById('exportButton').addEventListener('click', function() {
+                // Send GET request to the Flask route to download the file
+                window.location.href = '/export';
+            });
+
+            // Function to trigger download when export button is clicked
+            document.getElementById('syncFromCraigslistButton').addEventListener('click', function() {
+                window.location.href = '/fullsync';
+            });
+
+        };
+    </script>
+</body>
+</html>

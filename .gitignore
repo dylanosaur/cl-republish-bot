@@ -1,0 +1,10 @@
+.env
+venv/
+app.log
+requests.db
+app*.log
+logs/*.log
+cl-bot/node_modules/
+cl-bot/screenshot.png
+__pycache__/
+cl-bot/users.json

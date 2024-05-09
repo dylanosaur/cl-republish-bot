@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmation Page</title>
+
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+        th {
+            background-color: #b3b3b3;
+            border-radius: 6px;
+        }
+        .actionButton {
+            margin: 10px;
+        }
+        #filterBox {
+            margin: 10px 10px;
+        }
+        body {
+            background-color: #dbdbdb;
+        }
+    </style>
+    
+</head>
+<body>
+    <h1>Confirm Selected IDs</h1>
+
+    <div>
+        <h3>Republish Batch</h3>
+
+        <table>
+            <tr>
+
+                <th>Status</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>ID</th>
+            </tr>
+            {% for item in batch_republish_listings %}
+            <tr>
+                <td>{{ item[0].text }}</td>
+                <td>
+                    {% if item[2].ref %}
+                        <a href="{{ item[2].ref }}">{{item[2].text}}</a>
+                    {% else %}
+                        {{item[2].text}}
+                    {% endif %}
+                </td>
+                <td>{{ item[3].text }}</td>
+                <td>{{ item[7].text }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+    </div>
+
+
+    <form action="/batch_republish" method="post">
+        <input type="hidden" name="ids" value="">
+        <button type="submit">Process</button>
+    </form>
+</body>
+</html>
