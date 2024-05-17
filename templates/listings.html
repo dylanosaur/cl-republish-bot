@@ -47,10 +47,6 @@
             <button id="syncFromCraigslistButton" class="actionButton">
                 Sync from Craigslist
             </button>
-       
-            <button id="submitButton" class="actionButton">
-                Republish selected listings
-            </button>
 
             <button id="clearBatch" class="actionButton">
                 Clear Republish Batch
@@ -69,7 +65,11 @@
     </div>
 
     <div>
-        <h3>Republish Batch</h3>
+        <h3>Republish Batch             
+            <button id="submitButton" class="actionButton" style="background-color: rgb(152, 231, 152);">
+                Republish selected listings
+            </button>
+        </h3>
 
         <table>
             <tr>
@@ -132,8 +132,12 @@
             <th>ID</th>
 
             <th>Backup link</th>
-            <th>Mark for republish</th>
-
+            <th>Mark for republish <br>
+                <button id="republishButton" class="actionButton">
+                    Add to republish batch
+                </button>
+            </th>
+            <th>Republish results</th>
         </tr>
         {% for item in listings %}
         <tr>
@@ -160,6 +164,7 @@
             <td>
                 <input type="checkbox" id="{{item[7].text}}" name="checkbox" value="checked">
             </td>
+            <td>{{ item[8].text }}</td>
         </tr>
         {% endfor %}
     </table>
@@ -182,7 +187,73 @@
             } catch (error) {
                 console.error('Error:', error);
             }
+        }
+
+        function getCheckedIds() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            const ids = Array.from(checkboxes).map(checkbox => checkbox.id);
+            return ids;
+        }
+
+        // Function to update the republish batch
+        async function updateRepublishBatch() {
+            const ids = getCheckedIds();
+            try {
+                // send a POST request with all the ids of the checked boxes as a form with key "ids"
+                const response = await fetch('/updateRepublishBatch', {
+                    method: 'POST',
+                    credentials: 'include', // Include cookies if your session relies on them
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ ids: ids })
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to update session');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
             document.location.href = '/'
+
+        }
+
+
+
+        async function checkSessionCheckboxes() {
+            try {
+                const response = await fetch('/get_checked_ids', {
+                    method: 'GET',
+                    credentials: 'include', // Include cookies if your session relies on them
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch session data');
+                }
+
+                const data = await response.json();
+                const ids = data.ids;
+
+                // Check checkboxes with IDs from the session
+                const checkboxes = document.querySelectorAll(`input[type="checkbox"]`);
+                let checkboxesArray = [...checkboxes]
+                checkboxesArray.forEach(checkbox => {
+                    checkbox.checked = false;
+                })
+
+
+                ids.forEach(id => {
+                    const checkbox = document.querySelector(`input[type="checkbox"][id="${id}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            } catch (error) {
+                console.error('Error:', error);
+            }
         }
 
         // Function to send a POST request to remove item from batch
@@ -215,14 +286,23 @@
                 });
             });
 
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-            checkboxes.forEach(function (checkbox) {
-                checkbox.addEventListener('change', function () {
-                    if (this.checked) {
-                        sendCheckboxId(this.id); // Send the ID of the checked checkbox
-                    }
-                });
+            // Event listener for the republish button
+            document.getElementById('republishButton').addEventListener('click', function() {
+                updateRepublishBatch();
             });
+
+            
+            // Call the function to check checkboxes on page load
+            checkSessionCheckboxes()
+
+            // const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            // checkboxes.forEach(function (checkbox) {
+            //     checkbox.addEventListener('change', function () {
+            //         if (this.checked) {
+            //             sendCheckboxId(this.id); // Send the ID of the checked checkbox
+            //         }
+            //     });
+            // });
 
             const clearRepublishBatchButton = document.getElementById('clearBatch')
 

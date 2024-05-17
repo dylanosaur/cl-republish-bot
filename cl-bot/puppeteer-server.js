@@ -1,6 +1,6 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
-const {setupBrowser, loginToCraigslist, scrapeListings, repostListing, scrapeListingsAllPages} = require('./puppy.js')
+const {setupBrowser, loginToCraigslist, scrapeListings, repostListing, scrapeListingsAllPages, saveProcessResult} = require('./puppy.js')
 const fs = require('fs');
 const axios = require('axios');
 
@@ -80,9 +80,17 @@ app.get('/puppeteer/republish', async (req, res) => {
     try {
         const { listingId } = req.query;
         await repostListing(page, listingId, false)
+
+        let date = new Date().toISOString();
+        saveProcessResult(listingId, 'success', date)
+
         res.status(200).send('Action completed successfully');
     } catch (error) {
         console.error('Error:', error);
+
+        let date = new Date().toISOString();
+        saveProcessResult(listingId, 'error', date)
+        
         res.status(500).send('An error occurred');
     }
 });

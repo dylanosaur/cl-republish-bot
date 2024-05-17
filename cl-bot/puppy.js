@@ -45,7 +45,8 @@ async function setupBrowser() {
     timeout: 60000,
     args: [
       '--disable-notifications',
-    ]
+    ],
+    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\Chrome.exe"
   }); // Launch browser
   const page = await browser.newPage(); // Create a new page
   await page.setViewport({ width: 0, height: 0 });
@@ -447,14 +448,55 @@ async function repostListing(page, listingId, enablePaymentConfirm) {
   await new Promise(resolve => setTimeout(resolve, 1 * 1000));
 
   console.log('republish completed normally')
+
+  // let date = new Date().toISOString();
+  // saveProcessResult(listingId, 'success', date)
   return true;
 }
 
+function saveProcessResult(id, successMessage, date) {
+
+  const filePath = './data/process_results.json'
+
+  // Read the existing data from the JSON file
+  fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err && err.code !== 'ENOENT') {
+          console.error('Error reading file:', err);
+          return;
+      }
+
+      let results = [];
+      if (!err) {
+          try {
+              results = JSON.parse(data);
+          } catch (parseErr) {
+              console.error('Error parsing JSON:', parseErr);
+          }
+      }
+
+      // Append the new result
+      results.push({
+          id: id,
+          success_message: successMessage,
+          date: date
+      });
+
+      // Save the updated data back to the JSON file
+      fs.writeFile(filePath, JSON.stringify(results, null, 4), 'utf8', (writeErr) => {
+          if (writeErr) {
+              console.error('Error writing file:', writeErr);
+          } else {
+              console.log('Process result saved successfully');
+          }
+      });
+  });
+}
 
 module.exports = {
   setupBrowser, 
   loginToCraigslist, 
   scrapeListings, 
   repostListing,
-  scrapeListingsAllPages
+  scrapeListingsAllPages,
+  saveProcessResult
 }

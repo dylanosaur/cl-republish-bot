@@ -14,6 +14,16 @@ app = Flask(__name__)
 app.secret_key = 'my-secret-key'
 app.config["SESSION_PERMANENT"] = True
 
+
+def load_processed_ids():
+    try:
+        processed_ids = json.loads(open('cl-bot/data/process_results.json', 'r').read())
+    except:
+        print('no file found')
+        processed_ids = []
+    processed_ids = {x['id']:x for x in processed_ids}
+    return processed_ids
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     print('starting session', session)
@@ -74,6 +84,31 @@ def index():
 
     print('final session', session)
 
+    # write processed_ids into listings
+    processed_ids = load_processed_ids()
+    print(processed_ids.keys())
+    for item in listings:
+        item_id = item[7]['text']
+        # check for process results
+        if item_id in processed_ids:
+            print(item_id)
+
+            process_results = processed_ids[item_id]
+            item.append({
+                "classes": "generated",
+                "text": f"{process_results['date']} - {process_results['success_message']}",
+                "html": "no html",
+                "ref": "",
+                "postref": ""
+            })
+        else:
+            item.append({
+                "classes": "generated",
+                "text": "",
+                "html": "no html",
+                "ref": "",
+                "postref": ""
+            })  
     batch_republish_listings = [x for x in full_listings if x[7]['text'] in batchIds["ids"]]
     return render_template('listings.html', listings=listings, applied_filters=applied_filters, category_options=regions_all, batch_republish_listings=batch_republish_listings)
 
@@ -111,6 +146,28 @@ def update_session():
     print(session)
     return 'Session updated', 200
 
+@app.route('/updateRepublishBatch', methods=['POST'])
+def updateRepublishBatch():
+    data = request.json
+    batch_ids = data.get('ids')
+    print(batch_ids)
+
+    # Initialize session['batchIds'] if it doesn't exist
+    # session.setdefault('batchIds', [])
+    if 'batchIds' not in session:
+        print('resetting batch ids')
+        session['batchIds'] = json.dumps({"ids":[]})
+        batchIds = {"ids": []}
+    else:
+        batchIds = json.loads(session['batchIds'])
+
+    # Append the batch ID to session['batchIds']
+    batchIds["ids"].extend(batch_ids)
+    batchIds["ids"] = list(set(batchIds["ids"]))
+    session['batchIds'] = json.dumps(batchIds)
+    print(session)
+    return 'Session updated', 200
+
 
 @app.route('/remove_from_batch', methods=['POST'])
 def remove_from_batch():
@@ -138,6 +195,14 @@ def clear_batch():
     batchIds = {"ids": []}
     session['batchIds'] = json.dumps(batchIds)
     return redirect('/')
+
+from flask import session, jsonify
+
+@app.route('/get_checked_ids', methods=['GET'])
+def get_checked_ids():
+    # Assuming 'ids' is stored in the session
+    ids = json.loads(session["batchIds"])['ids']
+    return jsonify({'ids': ids})
 
 @app.route('/print_session', methods=['GET', 'POST'])
 def print_session():
@@ -233,7 +298,7 @@ def confirm():
         listings = []
 
     batch_republish_listings = [x for x in listings if x[7]['text'] in batchIds["ids"]]
-    print('republishing these listings', batch_republish_listings)
+    # print('republishing these listings', batch_republish_listings)
     if request.method == 'POST':
         selected_ids = ','.join([x[7]['text'] for x in batch_republish_listings])
         print('republishing selected ids', selected_ids)
@@ -271,6 +336,9 @@ def export():
     pd.DataFrame(data).to_csv('data/export.csv', index=False)
 
     return send_file('data/export.csv', as_attachment=True)
+
+
+
 
 if __name__ == '__main__':
     start_puppeteer_bot()
